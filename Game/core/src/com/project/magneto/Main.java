@@ -1,5 +1,9 @@
 package com.project.magneto;
 
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.Random;
+
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
@@ -34,6 +38,8 @@ public class Main extends ApplicationAdapter {
 	TextureRegion ready;
 	TextureRegion gameOver;
 	Animation plane;
+	
+	Deque<Obstacle> obstacles = new LinkedList<Obstacle>();
 	
 	static enum Orientation {
 		Left, Right
@@ -91,6 +97,12 @@ public class Main extends ApplicationAdapter {
 		planePosition.set(PLANE_START_X, PLANE_START_Y);
 		planeVelocity.set(0, 100);
 		gravity.set(GRAVITY, 0);
+		obstacles.clear();
+		addObstacle();
+		addObstacle();
+		addObstacle();
+		addObstacle();
+		addObstacle();
 	}
 	
 	private void updateWorld() {
@@ -142,6 +154,12 @@ public class Main extends ApplicationAdapter {
 		batch.draw(rightWall, 480 - rightWall.getRegionWidth(), groundOffsetX);
 		batch.draw(rightWall, 480 - rightWall.getRegionWidth(), groundOffsetX + rightWall.getRegionHeight());
 		batch.draw(plane.getKeyFrame(planeStateTime), planePosition.x, planePosition.y);
+
+		for(Obstacle o: obstacles) {
+			batch.draw(o.image, o.position.x, o.position.y);
+		}
+			
+		
 		batch.end();
 	}
 	
@@ -153,4 +171,31 @@ public class Main extends ApplicationAdapter {
 		updateWorld();
 		drawWorld();
 	}
+	
+	public void addObstacle() {
+		Obstacle last = obstacles.peekLast();
+		Float y = 0.0f;
+		Float x = (float) leftWall.getRegionWidth();
+		TextureRegion image = new TextureRegion(new Texture("obstacle1.png"));
+		
+		if (last != null) {
+			y = last.position.y;
+		}
+		
+		
+		Random rand = new Random();
+				
+		Integer min = 500;
+		Integer max = 800;
+
+		y += rand.nextInt((max - min) + 1) + min;
+		
+		if (rand.nextBoolean()) {
+			x = (float) (480 - rightWall.getRegionWidth()) - image.getRegionWidth();
+		}
+		
+		obstacles.add(new Obstacle(x, y, image));
+		
+	}
+	
 }
