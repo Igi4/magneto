@@ -4,6 +4,10 @@ import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Random;
 
+import javax.swing.text.ChangedCharSetException;
+
+import javafx.scene.layout.Background;
+
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
@@ -26,6 +30,8 @@ public class Main extends ApplicationAdapter {
 
 	private static final float MAGNETO_START_X = 240;
 	private static final float MAGNETO_START_Y = 200;
+	private static final float BACKGROUND_X = 0;
+	private static final float BACKGROUND_Y = 0;
 	private static final float GRAVITY = -50;
 	
 	ShapeRenderer shapeRenderer;
@@ -33,22 +39,28 @@ public class Main extends ApplicationAdapter {
 	SpriteBatch batch;
 	OrthographicCamera uiCamera;
 	Texture background;
+	Texture secondaryBackground;
 	TextureRegion leftWall;
+	TextureRegion secondaryLeftWall;
 	TextureRegion rightWall;
+	TextureRegion secondaryRightWall;
 	float groundOffsetX = 0;
 	TextureRegion ready;
 	TextureRegion gameOver;
-	Animation magneto;
+	Animation magnetoRight;
+	Animation magnetoLeft;
 	Animation rotation;
 	Rectangle magnetoHitBox = new Rectangle();
 	Rectangle jumpRect = new Rectangle();
 	BitmapFont font;
 	BitmapFont font2;
+	BitmapFont font3;
 	int score = 0;
 	int highScore = 0;
 	boolean onGround = false;
-	float rotationOffset = 150;
-	float rotationLength = 180;
+	float rotationOffset = 108;    //150
+	float rotationLength = 264;    //180
+	
 	
 //	Rectangle cameraHitBox = new Rectangle();
 	
@@ -62,6 +74,9 @@ public class Main extends ApplicationAdapter {
 	
 	//GameState gameState = GameState.Start;
 
+	
+	Vector2 backgroundPosition = new Vector2();
+	Vector2 backgroundVelocity = new Vector2();
 	Vector2 magnetoPosition = new Vector2();
 	Vector2 magnetoVelocity = new Vector2();
 	Vector2 gravity = new Vector2();
@@ -90,10 +105,17 @@ public class Main extends ApplicationAdapter {
 		font2 = new BitmapFont(Gdx.files.internal("arial.fnt"));
 		font2.setColor(1, 1, 0, 1);
 		font2.setScale(0.5f, 1);
+
+		font3 = new BitmapFont(Gdx.files.internal("arial.fnt"));
+		font3.setColor(0, 1, 0, 1);
+		font3.setScale(0.3f, 0.3f);
 		
 		background = new Texture("background.png");	
-		leftWall = new TextureRegion(new Texture("Left_wall.png"));
-		rightWall = new TextureRegion(new Texture("Right_wall.png"));
+		secondaryBackground = new Texture("background.png");	
+		leftWall = new TextureRegion(new Texture("left_wall.png"));
+		secondaryLeftWall = new TextureRegion(new Texture("left_wall.png"));
+		rightWall = new TextureRegion(new Texture("right_wall.png"));
+		secondaryRightWall = new TextureRegion(new Texture("right_wall.png"));
 
 		TextureRegion rotationFrame1 = new TextureRegion(new Texture("rotate1.png"));
 		TextureRegion rotationFrame2 = new TextureRegion(new Texture("rotate2.png"));
@@ -104,13 +126,23 @@ public class Main extends ApplicationAdapter {
 		rotation = new Animation(rotationLength / 5.0f / 1000.0f, rotationFrame1, rotationFrame2, rotationFrame3, rotationFrame4, rotationFrame5);
 		rotation.setPlayMode(PlayMode.NORMAL);
 		
-		TextureRegion frame1 = new TextureRegion(new Texture("magneto_blue1.png"));
-		TextureRegion frame2 = new TextureRegion(new Texture("magneto_blue2.png"));
-		TextureRegion frame3 = new TextureRegion(new Texture("magneto_blue3.png"));
+		TextureRegion blueFrame1 = new TextureRegion(new Texture("magneto_blue1.png"));
+		TextureRegion blueFrame2 = new TextureRegion(new Texture("magneto_blue2.png"));
+		TextureRegion blueFrame3 = new TextureRegion(new Texture("magneto_blue3.png"));
 		
 		
-		magneto = new Animation(0.1f, frame1, frame2, frame3, frame2);
-		magneto.setPlayMode(PlayMode.LOOP);
+		magnetoRight = new Animation(0.1f, blueFrame1, blueFrame2, blueFrame3, blueFrame2);
+		magnetoRight.setPlayMode(PlayMode.LOOP);
+
+		
+		TextureRegion redFrame1 = new TextureRegion(new Texture("magneto_red1.png"));
+		TextureRegion redFrame2 = new TextureRegion(new Texture("magneto_red2.png"));
+		TextureRegion redFrame3 = new TextureRegion(new Texture("magneto_red3.png"));
+		
+		
+		magnetoLeft = new Animation(0.1f, redFrame1, redFrame2, redFrame3, redFrame2);
+		magnetoLeft.setPlayMode(PlayMode.LOOP);
+		
 		
 		magnetoVelocity.set(100, 0);
         magnetoPosition.mulAdd(magnetoVelocity, 0.016f);
@@ -124,6 +156,10 @@ public class Main extends ApplicationAdapter {
 		camera.position.y = 400;
 		magnetoPosition.set(MAGNETO_START_X, MAGNETO_START_Y);
 		magnetoVelocity.set(0, 300);
+		
+		backgroundPosition.set(BACKGROUND_X, BACKGROUND_Y);
+		backgroundVelocity.set(0, 150);
+		
 		gravity.set(GRAVITY, 0);
 		obstacles.clear();
 	
@@ -137,7 +173,7 @@ public class Main extends ApplicationAdapter {
 		float deltaTime = Gdx.graphics.getDeltaTime();
 		magnetoStateTime += deltaTime;
 		
-		
+
 		if (orientation == Orientation.Left) {
 			gravity.set(GRAVITY, 0);
 		}
@@ -147,6 +183,7 @@ public class Main extends ApplicationAdapter {
 		
 		magnetoVelocity.add(gravity);
 		
+		backgroundPosition.mulAdd(backgroundVelocity, deltaTime);
 		
 		if (Gdx.input.justTouched()) {
 			orientation = (orientation == Orientation.Left) ? Orientation.Right : Orientation.Left; 
@@ -157,30 +194,41 @@ public class Main extends ApplicationAdapter {
 		if ((magnetoPosition.x <= leftWall.getRegionWidth()) && magnetoVelocity.x < 0) {
 			magnetoVelocity.x = 0;
 			magnetoPosition.x = leftWall.getRegionWidth();
-//			onGround = true;
-//			rotationStateTime = 0;
 		}
 	
 		
-		if ((magnetoPosition.x + magneto.getKeyFrame(0).getRegionWidth() >= 480 - rightWall.getRegionWidth()) &&
+		if ((magnetoPosition.x + magnetoRight.getKeyFrame(0).getRegionWidth() >= 480 - rightWall.getRegionWidth()) &&
 				magnetoVelocity.x > 0) {
 			magnetoVelocity.x = 0;
-			magnetoPosition.x = camera.viewportWidth - rightWall.getRegionWidth() - magneto.getKeyFrame(0).getRegionWidth();
-//			onGround = true;
-//			rotationStateTime = 0;
+			magnetoPosition.x = camera.viewportWidth - rightWall.getRegionWidth() - magnetoRight.getKeyFrame(0).getRegionWidth();
 		}
-		
 		
 		
 		camera.position.y = magnetoPosition.y + 200;		
-		if(camera.position.y - groundOffsetX > leftWall.getRegionHeight() + 400) {
+		if (camera.position.y - groundOffsetX > leftWall.getRegionHeight() + 400) {
 			groundOffsetX += leftWall.getRegionHeight();
+
+			rightWall = secondaryRightWall;
+			leftWall = secondaryLeftWall;
+			
+			changeWalls();
 		}
+		
+		
+		
+		if (camera.position.y - (camera.viewportHeight / 2) > backgroundPosition.y + background.getHeight()) {
+			backgroundPosition.y += background.getHeight();
+			
+			background = secondaryBackground;
+			
+			changeBackground();
+		}
+
 
 		
 		jumpRect.set(rotationOffset, 0, rotationLength, camera.viewportHeight);
 		
-		magnetoHitBox.set(magnetoPosition.x, 200, magneto.getKeyFrame(0).getRegionWidth(), magneto.getKeyFrame(0).getRegionHeight());
+		magnetoHitBox.set(magnetoPosition.x, 200, magnetoRight.getKeyFrame(0).getRegionWidth(), magnetoRight.getKeyFrame(0).getRegionHeight());
 		
 		
 //		if (magnetoHitBox.overlaps(jumpRect)) {
@@ -210,24 +258,38 @@ public class Main extends ApplicationAdapter {
 		camera.update();
 		batch.setProjectionMatrix(camera.combined);
 		batch.begin();
-		batch.draw(background, 0, camera.position.y - background.getHeight() / 2);
-		batch.draw(leftWall, 0, groundOffsetX);
-		batch.draw(leftWall, 0, groundOffsetX + leftWall.getRegionHeight());
-		batch.draw(rightWall, 480 - rightWall.getRegionWidth(), groundOffsetX);
-		batch.draw(rightWall, 480 - rightWall.getRegionWidth(), groundOffsetX + rightWall.getRegionHeight());
+//		batch.draw(background, 0, camera.position.y - background.getHeight() / 2);
+		batch.draw(background, backgroundPosition.x, backgroundPosition.y);
+		batch.draw(secondaryBackground, backgroundPosition.x, backgroundPosition.y + background.getHeight());
 		
-		if (!magnetoHitBox.overlaps(jumpRect)) {
-			batch.draw(magneto.getKeyFrame(magnetoStateTime), magnetoPosition.x, magnetoPosition.y);
+		batch.draw(leftWall, 0, groundOffsetX);
+		batch.draw(secondaryLeftWall, 0, groundOffsetX + leftWall.getRegionHeight());
+		
+		batch.draw(rightWall, 480 - rightWall.getRegionWidth(), groundOffsetX);
+		batch.draw(secondaryRightWall, 480 - rightWall.getRegionWidth(), groundOffsetX + rightWall.getRegionHeight());
+		
+		if (!magnetoHitBox.overlaps(jumpRect) && orientation == Orientation.Right) {
+			batch.draw(magnetoRight.getKeyFrame(magnetoStateTime), magnetoPosition.x, magnetoPosition.y);
 		}
+		else if (!magnetoHitBox.overlaps(jumpRect) && orientation == Orientation.Left) {
+			batch.draw(magnetoLeft.getKeyFrame(magnetoStateTime), magnetoPosition.x, magnetoPosition.y);
+		}
+		
+		
 		else {
 			batch.draw(rotation.getKeyFrame((magnetoPosition.x - rotationOffset) / 1000), magnetoPosition.x, magnetoPosition.y);
 		}
 		
+		
 		font.draw(batch, "" + score, camera.position.x, camera.position.y + 300);
 		font2.draw(batch, "" + highScore, camera.position.x + 200, camera.position.y + 300);
 
+		
+		MovingObstacle mo;
 		for(Obstacle o: obstacles) {
 			batch.draw(o.image, o.position.x, o.position.y);
+			mo = (MovingObstacle)o;
+			font3.draw(batch, "" + mo.speed, camera.position.x + 190, mo.position.y);
 		}
 			
 		batch.end();
@@ -242,8 +304,18 @@ public class Main extends ApplicationAdapter {
 			 shapeRenderer.rect(o.hitBox.x, o.hitBox.y, o.hitBox.width, o.hitBox.height);
 				
 		 }
+		 
 		 shapeRenderer.end();
 
+		 
+		 
+		 if (hitCheck()) {                 /// TESTING PURPOUSE ONLY PLEASE DELETE AFTERWARDS
+			 shapeRenderer.begin(ShapeType.Filled);  /// TESTING PURPOUSE ONLY PLEASE DELETE AFTERWARDS
+			 shapeRenderer.setColor(1, 0, 0, 1);    /// TESTING PURPOUSE ONLY PLEASE DELETE AFTERWARDS
+			 shapeRenderer.rect(0, 0, camera.viewportWidth, camera.viewportHeight);  /// TESTING PURPOUSE ONLY PLEASE DELETE AFTERWARDS
+			 shapeRenderer.end();   /// TESTING PURPOUSE ONLY PLEASE DELETE AFTERWARDS
+			 
+		 }
 	}
 	
 	@Override
@@ -257,7 +329,8 @@ public class Main extends ApplicationAdapter {
 	
 	public void addObstacle() {
 		Obstacle last = obstacles.peekLast();
-		Float y = 0.0f;
+//		Float y = 0.0f;
+		Float y = camera.viewportHeight;
 		Float x = (float) leftWall.getRegionWidth();
 		TextureRegion image = new TextureRegion(new Texture("obstacle1.png"));
 		
@@ -268,7 +341,7 @@ public class Main extends ApplicationAdapter {
 		
 		Random rand = new Random();
 				
-		Integer min = 200;
+		Integer min = 250;
 		Integer max = 400;
 
 		y += rand.nextInt((max - min) + 1) + min;
@@ -280,7 +353,7 @@ public class Main extends ApplicationAdapter {
 		
 	
 		min = 0;
-		max = 700;
+		max = 600;
 
 		float s = rand.nextInt((max - min) + 1) + min;
 		
@@ -305,19 +378,20 @@ public class Main extends ApplicationAdapter {
 		return removedAtLeastOne;
 	}
 	
-	public void hitCheck() {
+	public boolean hitCheck() {
 		for (Obstacle o : obstacles) {
 			if (magnetoHitBox.overlaps(o.hitBox)) {
 				System.out.println("HitCheck " + o.position.x + " " + o.position.y);
-		
+				
 				if (score > highScore) {
 					highScore = score;
 				}
-				
 				score = 0;
+				return true;
 			}
 			
 		}
+		return false;
 	}
 	
 	public void countScore() {
@@ -328,6 +402,39 @@ public class Main extends ApplicationAdapter {
 			}
 			
 		} 
+	}
+	
+	public void changeBackground() {
+		Random rand = new Random();
+		
+		Integer min = 1;
+		Integer max = 5;
+
+		int r = rand.nextInt((max - min) + 1) + min;
+		
+		secondaryBackground = new Texture("background0" + r + ".png");
+		
+	}
+	
+	public void changeWalls() {
+		Random rand = new Random();
+		
+		Integer min = 1;
+		Integer max = 4;
+
+		int r;
+		int r2;
+		
+		r = rand.nextInt((max - min) + 1) + min;
+		r2 = rand.nextInt((max - min) + 1) + min;
+		
+		while (r2 == r) {                    //same walls won't be facing each other (looks bad)
+			r2 = rand.nextInt((max - min) + 1) + min;
+		}
+		
+		secondaryRightWall = new TextureRegion(new Texture("right_wall" + r + ".png"));
+		secondaryLeftWall = new TextureRegion(new Texture("left_wall" + r2 + ".png"));
+	
 	}
 	
 }
