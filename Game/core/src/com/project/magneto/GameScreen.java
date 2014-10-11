@@ -17,6 +17,15 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.scenes.scene2d.Action;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.ui.Button;
+import com.badlogic.gdx.scenes.scene2d.ui.Button.ButtonStyle;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.utils.viewport.StretchViewport;
 
 public class GameScreen implements Screen {
     Main game; 
@@ -55,11 +64,22 @@ public class GameScreen implements Screen {
 	Texture backgroundL1;
 	Texture secondaryBackgroundL1;
 	
-	
+	static enum GameState {
+		Start, Running, GameOver
+	}
+	GameState gameState = GameState.Running;
 	
 	float groundOffsetX = 0;
-	TextureRegion buttonUp = new TextureRegion();
-	TextureRegion buttonDown = new TextureRegion();
+	
+	Image gameOverBackground;
+	Image gameOverScore;
+	Image gameOverBestScore;
+	ButtonStyle playAgainStyle = new ButtonStyle();
+	Button playAgain;
+	TextureRegionDrawable playAgainDown = new TextureRegionDrawable();
+	TextureRegionDrawable playAgainUp = new TextureRegionDrawable();
+	Stage stage = new Stage(new StretchViewport(480, 800));
+	
 	Animation magnetoRight;
 	Animation magnetoLeft;
 	Animation rotation;
@@ -74,19 +94,15 @@ public class GameScreen implements Screen {
 	float rotationOffset = 108;    //150
 	float rotationLength = 264;    //180
 	
-	Deque<Obstacle> obstacles = new LinkedList<Obstacle>();
-	Deque<Cart> carts = new LinkedList<Cart>();
+	Deque<MovingObstacle> obstacles = new LinkedList<MovingObstacle>();
+	Deque<MovingObstacle> cartsL2 = new LinkedList<MovingObstacle>();
+	Deque<MovingObstacle> cartsL3 = new LinkedList<MovingObstacle>();
 	
 	static enum Orientation {
 		Left, Right
 	}
 	Orientation orientation = Orientation.Right;
 	
-	static enum GameState {
-		Start, Running, GameOver
-	}
-	GameState gameState = GameState.Running;
-
 	
 	Vector2 backgroundL1Position = new Vector2();
 	Vector2 backgroundL1Velocity = new Vector2();
@@ -118,6 +134,7 @@ public class GameScreen implements Screen {
 
     	 updateWorld();
     	 drawWorld();
+//    	 game.gameOverScreen.show();
      }
 
 
@@ -128,6 +145,9 @@ public class GameScreen implements Screen {
 
     @Override
      public void show() {
+    	stage = new Stage(new StretchViewport(480, 800));
+    	Gdx.input.setInputProcessor(stage);  // ???
+    	
 		shapeRenderer = new ShapeRenderer();
 		batch = new SpriteBatch();
 		camera = new OrthographicCamera();
@@ -147,6 +167,36 @@ public class GameScreen implements Screen {
 		font3 = new BitmapFont(Gdx.files.internal("arial.fnt"));
 		font3.setColor(0, 1, 0, 1);
 		font3.setScale(0.3f, 0.3f);
+		
+		
+		
+		
+		
+		
+		playAgainUp = new TextureRegionDrawable(new TextureRegion(new Texture(Gdx.files.internal("gameOver/play_again_up.png"))));
+		playAgainDown = new TextureRegionDrawable(new TextureRegion(new Texture(Gdx.files.internal("gameOver/play_again_down.png"))));
+		
+		playAgainStyle.up = playAgainUp;
+		playAgainStyle.down = playAgainDown;
+		
+		playAgain = new Button(playAgainStyle);
+		gameOverBackground = new Image(new Texture(Gdx.files.internal("gameOver/table.png")));
+		gameOverScore = new Image(new Texture(Gdx.files.internal("gameOver/score.png")));
+		gameOverBestScore = new Image(new Texture(Gdx.files.internal("gameOver/best.png")));
+		
+		gameOverBackground.setPosition((stage.getWidth() / 2) - (gameOverBackground.getWidth() / 2), (stage.getHeight() / 2) - (gameOverBackground.getHeight() / 2));
+		playAgain.setPosition(gameOverBackground.getCenterX() - playAgain.getCenterX(), 
+							  (gameOverBackground.getHeight() / 5) + ((stage.getHeight() - gameOverBackground.getHeight()) / 2));
+		gameOverScore.setPosition(gameOverBackground.getCenterX() - gameOverScore.getCenterX() - 40, 
+							  stage.getHeight() - (150) - ((stage.getHeight() - gameOverBackground.getHeight()) / 2));
+		gameOverBestScore.setPosition(gameOverBackground.getCenterX() - gameOverBestScore.getCenterX() - 40, 
+				stage.getHeight() - (200) - ((stage.getHeight() - gameOverBackground.getHeight()) / 2) - gameOverScore.getHeight());
+		
+		
+		stage.addActor(gameOverBackground);
+		stage.addActor(playAgain);
+		stage.addActor(gameOverScore);
+		stage.addActor(gameOverBestScore);
 		
 		
 		backgroundL1 = loadRandomTexture(2, "background/layer1/background");
@@ -208,17 +258,11 @@ public class GameScreen implements Screen {
 		camera.position.y = 400;
 		
 		magnetoPosition.set(MAGNETO_START_X, MAGNETO_START_Y);
-		magnetoVelocity.set(0, 300);
-		
-		
 		backgroundL1Position.set(BACKGROUND_X, BACKGROUND_Y);
-		backgroundL1Velocity.set(0, 200);
-		
 		backgroundL2Position.set(BACKGROUND_X, BACKGROUND_Y);
-		backgroundL2Velocity.set(0, 150);
-		
 		backgroundL3Position.set(BACKGROUND_X, BACKGROUND_Y);
-		backgroundL3Velocity.set(0, 50);
+
+		setSpeed(300);
 		
 		
 		gravity.set(GRAVITY, 0);
@@ -228,7 +272,10 @@ public class GameScreen implements Screen {
 			addObstacle();
 		}
 		for (int i = 1; i <= 40; i++) {
-			addCart();
+			addCart(cartsL2, "layer2", 5, 30, 20, getRandomValue(20, 80));
+		}
+		for (int i = 1; i <= 16; i++) {
+			addCart(cartsL3, "layer3", 5, 70, 150, getRandomValue(50, 400));
 		}
 		
 	}
@@ -252,7 +299,26 @@ public class GameScreen implements Screen {
 
     @Override
      public void dispose() {
-             // never called automatically
+    	shapeRenderer.dispose();
+    	batch.dispose();
+    	leftWall.dispose();
+    	secondaryLeftWall.dispose();
+    	rightWall.dispose();
+    	secondaryRightWall.dispose();
+    	backgroundL4Left.dispose();
+    	secondaryBackgroundL4Left.dispose();
+    	backgroundL4Right.dispose();
+    	secondaryBackgroundL4Right.dispose();
+    	backgroundL3.dispose();
+    	secondaryBackgroundL3.dispose();
+    	backgroundL2.dispose();
+    	secondaryBackgroundL2.dispose();
+    	backgroundL1.dispose();
+    	secondaryBackgroundL1.dispose();
+    	stage.dispose();   
+    	obstacles.clear();
+    	cartsL2.clear();
+    	cartsL3.clear();
      }
     
     private void updateWorld() {
@@ -339,18 +405,23 @@ public class GameScreen implements Screen {
 		magnetoHitBox.set(magnetoPosition.x, 200, magnetoRight.getKeyFrame(0).getRegionWidth(), magnetoRight.getKeyFrame(0).getRegionHeight());
 		
 		
-//		if (magnetoHitBox.overlaps(jumpRect)) {
-//			onGround = false;
-//			rotationStateTime += deltaTime;
+//		if (removeObstacles() && gameState == GameState.Running) {
+//			addObstacle();
 //		}
-		
-		
-		if (removeObstacles()) {
+//		
+//		if (removeCarts()) {
+//			addCart();
+//		}
+//		
+		if (removeMovingObstacle(obstacles) && gameState == GameState.Running) {
 			addObstacle();
 		}
 		
-		if (removeCarts()) {
-			addCart();
+		if (removeMovingObstacle(cartsL2)) {
+			addCart(cartsL2, "layer2", 5, 30, 20, getRandomValue(20, 80));
+		}
+		if (removeMovingObstacle(cartsL3)) {
+			addCart(cartsL3, "layer3", 5, 70, 150, getRandomValue(50, 400));
 		}
 		
 		
@@ -365,7 +436,11 @@ public class GameScreen implements Screen {
 			mo.move(deltaTime);
 		}
 		
-		for (Cart c : carts) {
+		for (MovingObstacle c : cartsL2) {
+			c.move(deltaTime);
+		} 
+		
+		for (MovingObstacle c : cartsL3) {
 			c.move(deltaTime);
 		} 
 		
@@ -376,7 +451,6 @@ public class GameScreen implements Screen {
 		camera.update();
 		batch.setProjectionMatrix(camera.combined);
 		batch.begin();
-		
 		batch.draw(backgroundL1, backgroundL1Position.x, backgroundL1Position.y);
 		batch.draw(secondaryBackgroundL1, backgroundL1Position.x, backgroundL1Position.y + backgroundL1.getHeight());
 		
@@ -384,12 +458,25 @@ public class GameScreen implements Screen {
 		batch.draw(secondaryBackgroundL2, backgroundL2Position.x, backgroundL2Position.y + backgroundL2.getHeight());
 
 		
-		for (Cart c : carts) {
+		for (MovingObstacle cart : cartsL2) {
+			Cart c = (Cart) cart;
+			float x = c.position.x;
+		
+			for (int i = 0; i < c.count; i++) {
+				batch.draw(c.image, x, c.position.y);
+
+				x += c.spacing;
+			}
+			batch.draw(c.rail, camera.position.x - (camera.viewportWidth / 2), c.position.y - c.rail.getHeight());
+		}
+		
+		for (MovingObstacle cart : cartsL3) {
+			Cart c = (Cart) cart;
 			float x = c.position.x;
 			
 			for (int i = 0; i < c.count; i++) {
 				batch.draw(c.image, x, c.position.y);
-
+				
 				x += c.spacing;
 			}
 			batch.draw(c.rail, camera.position.x - (camera.viewportWidth / 2), c.position.y - c.rail.getHeight());
@@ -434,18 +521,17 @@ public class GameScreen implements Screen {
 		font.draw(batch, "" + score, camera.position.x, camera.position.y + 300);
 		font2.draw(batch, "" + highScore, camera.position.x + 200, camera.position.y + 300);
 
-		
-		MovingObstacle mo;
-		for(Obstacle o: obstacles) {
-			batch.draw(o.image, o.position.x, o.position.y);
-			mo = (MovingObstacle)o;
+		for(MovingObstacle mo: obstacles) {
+			batch.draw(mo.image, mo.position.x, mo.position.y);
 			font3.draw(batch, "" + mo.velocity, camera.position.x + 190, mo.position.y);
 		}
+		batch.end();
 
 		
-			
+		if (gameState == GameState.GameOver) {
+			drawGameOverScreen();
+		} 
 		
-		batch.end();
 		
 		 shapeRenderer.begin(ShapeType.Line);
 		 shapeRenderer.setColor(0, 1, 0, 1);
@@ -463,120 +549,64 @@ public class GameScreen implements Screen {
 
 		 
 		 
-		 if (hitCheck()) {                 /// TESTING PURPOUSE ONLY PLEASE DELETE AFTERWARDS
-			 shapeRenderer.begin(ShapeType.Filled);  /// TESTING PURPOUSE ONLY PLEASE DELETE AFTERWARDS
-			 shapeRenderer.setColor(1, 0, 0, 1);    /// TESTING PURPOUSE ONLY PLEASE DELETE AFTERWARDS
-			 shapeRenderer.rect(0, 0, camera.viewportWidth, camera.viewportHeight);  /// TESTING PURPOUSE ONLY PLEASE DELETE AFTERWARDS
-			 shapeRenderer.end();   /// TESTING PURPOUSE ONLY PLEASE DELETE AFTERWARDS
-			 
-		 }
 	}
 	
-//	@Override
-//	public void render () {
-//		Gdx.gl.glClearColor(1, 0, 0, 1);
-//		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-
-
-		
-		
-		
-//		if (gameState == GameState.Running) {
-//			updateWorld();
-//			drawWorld();
-//		}
-//
-//		else if (gameState == GameState.GameOver) {
-//			Gdx.gl.glClearColor(0.2f, 0.2f, 0.2f, 1);
-//			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-//			stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
-//			shapeRenderer.begin(ShapeType.Line);
-//			shapeRenderer.setColor(0, 1, 0, 1);
-//			shapeRenderer.rect(table.getX(), table.getY(), table.getWidth(), table.getHeight());
-//			shapeRenderer.end();
-//			stage.draw();
-//		}
-		
-//	}
 	
 	public void addObstacle() {
-		Obstacle last = obstacles.peekLast();
-		Float y = camera.viewportHeight;
 		Float x = (float) leftWall.getWidth();
 		Texture image = new Texture("obstacle1.png");
-		
-		if (last != null) {
-			y = last.position.y;
-		}
-		
-		y += getRandomValue(250, 400);
+		Vector2 velocity = new Vector2(getRandomValue(0, 600), 0);
 		
 		if (new Random().nextBoolean()) {
 			x = (float) (480 - rightWall.getWidth()) - image.getWidth();
 		}
-		
 	
-		float s = getRandomValue(0, 600);
-		
-		
-		
-		
-		obstacles.add(new MovingObstacle(x, y, image, leftWall.getWidth(), camera.viewportWidth - rightWall.getWidth(), s));
+		addMovingObstacle(obstacles, new MovingObstacle(image, leftWall.getWidth(), camera.viewportWidth - rightWall.getWidth(), velocity), x, 
+				          getRandomValue(250, 400), true);
 	}
 	
-	public boolean removeObstacles() {
-		Obstacle o = obstacles.peekFirst();
-		boolean removedAtLeastOne = false;
+	
+	public void addCart(Deque<MovingObstacle> collection, String layer, int maxCarts, int maxSpacing, int maxSpeed, float offset) {
+		float x = backgroundL4Left.getWidth() - 64;
+		Vector2 velocity = new Vector2(getRandomValue(5, maxSpeed), backgroundL3Velocity.y);
+		Texture image = new Texture(Gdx.files.internal("background/" + layer + "/carts/cart2.png"));
+		Texture rail = new Texture(Gdx.files.internal("background/" + layer + "/rails/rail2.png"));
 		
-		while (!obstacles.isEmpty() && (camera.position.y - camera.viewportHeight / 2) > (o.position.y + o.image.getHeight())) {
-			obstacles.pollFirst();
-			o = obstacles.peekFirst();
-			removedAtLeastOne = true;
+		if (new Random().nextBoolean()) {
+			x = camera.viewportWidth - backgroundL4Right.getWidth() + rightWall.getWidth() - image.getWidth();
+			image = new Texture(Gdx.files.internal("background/" + layer + "/carts/cart1.png"));
+			rail = new Texture(Gdx.files.internal("background/" + layer + "/rails/rail1.png"));
 		}
 		
-		return removedAtLeastOne;
+		addMovingObstacle(collection, new Cart(0, 0, image, rail, backgroundL4Left.getWidth() - leftWall.getWidth(), 
+				  camera.viewportWidth - backgroundL4Right.getWidth() + rightWall.getWidth(), velocity, maxCarts, maxSpacing), x, offset, false);
 	}
 	
-	
-	public void addCart() {
-		Cart last = carts.peekLast();
-		float y = camera.position.y - (camera.viewportHeight / 2);
-		float x = backgroundL4Left.getWidth() - leftWall.getWidth();
+	public void addMovingObstacle(Deque<MovingObstacle> collection, MovingObstacle obstacle, float x, float offset, boolean spawnOnTop) {
+		MovingObstacle last = collection.peekLast();
+		float y = 0;
 		
-		Texture image = new Texture("cart2.png");
-		Texture rail = new Texture("rail2.png");
-		
+		if (spawnOnTop) {
+			y = camera.viewportHeight;
+		}
 		
 		if (last != null) {
 			y = last.position.y;
 		}
 
-		y += getRandomValue(20, 80);
+		y += offset;
 		
-		if (new Random().nextBoolean()) {
-			x = camera.viewportWidth - backgroundL4Right.getWidth() + rightWall.getWidth() - image.getWidth();
-			image = new Texture("cart1.png");
-			rail = new Texture("rail1.png");
-		}
-		
-		
-		float velocityX = getRandomValue(10, 40);
-		
-		
-		
-		carts.add(new Cart(x, y, image, rail, velocityX, backgroundL2Velocity.y, 
-				  backgroundL4Left.getWidth() - leftWall.getWidth(), 
-				  camera.viewportWidth - backgroundL4Right.getWidth() + rightWall.getWidth()));
-		
+		obstacle.setPosition(x, y);
+		collection.add(obstacle);
 	}
 	
-	public boolean removeCarts() {
-		Cart c = carts.peekFirst();
+	public boolean removeMovingObstacle(Deque<MovingObstacle> collection) {
+		MovingObstacle obstacle = collection.peekFirst();
 		boolean removedAtLeastOne = false;
 		
-		while (!carts.isEmpty() && (camera.position.y - camera.viewportHeight / 2) > (c.position.y + c.image.getHeight())) {
-			carts.pollFirst();
-			c = carts.peekFirst();
+		while (!collection.isEmpty() && (camera.position.y - camera.viewportHeight / 2) > (obstacle.position.y + obstacle.image.getHeight())) {
+			collection.pollFirst();
+			obstacle =  collection.peekFirst();
 			removedAtLeastOne = true;
 		}
 		
@@ -593,8 +623,10 @@ public class GameScreen implements Screen {
 				}
 				score = 0;
 				
+//				game.setScreen(game.gameOverScreen);
 				gameState = GameState.GameOver;
-				resetWorld();
+				obstacles.clear();
+				setSpeed(100);
 				
 				return true;
 			}
@@ -623,6 +655,35 @@ public class GameScreen implements Screen {
 		Random rand = new Random();
 		return rand.nextInt((max - min) + 1) + min;
 	}
+	
+	
+	public void drawGameOverScreen() {
+//		stage.getViewport().update((int) camera.viewportWidth, (int) camera.viewportHeight);
+		
+		
+		stage.draw();
+
+		if (playAgain.isPressed()) {
+			gameState = GameState.Running;
+			dispose();
+			show();
+//			game.setScreen(game.gameScreen);  // toto asi neni dobry napad
+		}
+	}
     
+	public void setSpeed(Integer speed) {
+		magnetoVelocity.set(0, speed);
+		backgroundL1Velocity.set(0, (float) (speed * 0.66));
+		backgroundL2Velocity.set(0, (float) (speed * 0.5));
+		backgroundL3Velocity.set(0, (float) (speed * 0.166));
+		
+//		for (MovingObstacle cart : cartsL2) {
+//			cart.velocity.y = backgroundL2Velocity.y;  
+//		}
+//		for (MovingObstacle cart : cartsL3) {
+//			cart.velocity.y = backgroundL3Velocity.y;  
+//		}
+	}
+	
     
 }

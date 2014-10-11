@@ -11,14 +11,23 @@ public class Obstacle {
 	Rectangle hitBox = new Rectangle();
 	boolean counted = false;
 
-	public Obstacle(float x, float y, Texture image) {
-		this.position.x = x;
-		this.position.y = y;
+	public Obstacle(Texture image) {
 		this.image = image;
-		this.hitBox.set(x, y, image.getWidth(), image.getHeight());
 	}
 	
+	public Obstacle(float x, float y, Texture image) {
+		this(image);
+		this.setPosition(x, y);
+	}
+
 	public void updateHitBox(float y) {
 		this.hitBox.set(this.position.x, this.position.y - y, image.getWidth(), image.getHeight());
 	}
+	
+	public void setPosition(float x, float y) {
+		this.hitBox.set(x, y, image.getWidth(), image.getHeight());
+		this.position.x = x;
+		this.position.y = y;
+	}
+
 }

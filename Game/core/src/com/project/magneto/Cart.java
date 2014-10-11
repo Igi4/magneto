@@ -2,29 +2,23 @@ package com.project.magneto;
 
 import java.util.Random;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.math.Vector2;
 
 public class Cart extends MovingObstacle{
 
 	Texture rail;
 	int count;
 	int spacing;
-	float velocityY;
 	
-	public Cart(float x, float y, Texture cart, Texture rail, float velocityX, float velocityY, float leftBorder, float rightBorder) {
-		super(x, y, cart, leftBorder, rightBorder, velocityX);
-		this.velocityY = velocityY;
+	public Cart(float x, float y, Texture cart, Texture rail,  float leftBorder, float rightBorder, Vector2 velocity, int maxCarts, int maxSpacing) {
+		super(x, y, cart, leftBorder, rightBorder, velocity);
 		this.rail = rail;
 		
-		count = getRandomValue(1, 5);
-		spacing = getRandomValue(10, 30);
+		count = getRandomValue(1, maxCarts);
+		spacing = getRandomValue(10, maxSpacing);
 	}
 	
 	
-	public void move(float deltaTime) {
-		super.move(deltaTime);
-		this.velocity.y = velocityY;
-	}
-
 	public int getRandomValue(int min, int max) {
 		Random rand = new Random();
 		return rand.nextInt((max - min) + 1) + min;
