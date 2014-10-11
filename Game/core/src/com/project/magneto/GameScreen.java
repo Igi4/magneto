@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.Random;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Preferences;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -85,11 +86,13 @@ public class GameScreen implements Screen {
 	Animation rotation;
 	Rectangle magnetoHitBox = new Rectangle();
 	Rectangle jumpRect = new Rectangle();
-	BitmapFont font;
-	BitmapFont font2;
+	BitmapFont scoreFont;
+	BitmapFont endScoreFont;
 	BitmapFont font3;
 	int score = 0;
 	int highScore = 0;
+	boolean newHighScore = false;
+	Preferences prefs = Gdx.app.getPreferences("magnetoPreferences");
 	boolean onGround = false;
 	float rotationOffset = 108;    //150
 	float rotationLength = 264;    //180
@@ -156,15 +159,15 @@ public class GameScreen implements Screen {
 		uiCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		uiCamera.update();
 
-		font = new BitmapFont(Gdx.files.internal("arial.fnt"));
-		font.setColor(0, 1, 0, 1);
-		font.setScale(0.5f, 1);
+		scoreFont = new BitmapFont(Gdx.files.internal("font/arial.fnt"));
+		scoreFont.setColor(1, 1, 1, 1);
+		scoreFont.setScale(1.5f, 1.5f);
 		
-		font2 = new BitmapFont(Gdx.files.internal("arial.fnt"));
-		font2.setColor(1, 1, 0, 1);
-		font2.setScale(0.5f, 1);
+		endScoreFont = new BitmapFont(Gdx.files.internal("font/arial.fnt"));
+		endScoreFont.setColor(1, 1, 1, 1);
+		endScoreFont.setScale(1, 1);
 
-		font3 = new BitmapFont(Gdx.files.internal("arial.fnt"));
+		font3 = new BitmapFont(Gdx.files.internal("font/arial.fnt"));
 		font3.setColor(0, 1, 0, 1);
 		font3.setScale(0.3f, 0.3f);
 		
@@ -253,7 +256,7 @@ public class GameScreen implements Screen {
 
     private void resetWorld() {
 		score = 0;
-		highScore = 0;
+//		highScore = 0;
 		groundOffsetX = 0;
 		camera.position.y = 400;
 		
@@ -272,10 +275,10 @@ public class GameScreen implements Screen {
 			addObstacle();
 		}
 		for (int i = 1; i <= 40; i++) {
-			addCart(cartsL2, "layer2", 5, 30, 20, getRandomValue(20, 80));
+			addCart(cartsL2, "layer2", getRandomValue(20, 80), "cartsL2", backgroundL2Velocity.y);
 		}
 		for (int i = 1; i <= 16; i++) {
-			addCart(cartsL3, "layer3", 5, 70, 150, getRandomValue(50, 400));
+			addCart(cartsL3, "layer3", getRandomValue(50, 400), "cartsL3", backgroundL3Velocity.y);
 		}
 		
 	}
@@ -418,10 +421,10 @@ public class GameScreen implements Screen {
 		}
 		
 		if (removeMovingObstacle(cartsL2)) {
-			addCart(cartsL2, "layer2", 5, 30, 20, getRandomValue(20, 80));
+			addCart(cartsL2, "layer2", getRandomValue(20, 80), "cartsL2", backgroundL2Velocity.y);
 		}
 		if (removeMovingObstacle(cartsL3)) {
-			addCart(cartsL3, "layer3", 5, 70, 150, getRandomValue(50, 400));
+			addCart(cartsL3, "layer3", getRandomValue(50, 400), "cartsL3", backgroundL3Velocity.y);
 		}
 		
 		
@@ -518,13 +521,13 @@ public class GameScreen implements Screen {
 		}
 		
 		
-		font.draw(batch, "" + score, camera.position.x, camera.position.y + 300);
-		font2.draw(batch, "" + highScore, camera.position.x + 200, camera.position.y + 300);
 
 		for(MovingObstacle mo: obstacles) {
 			batch.draw(mo.image, mo.position.x, mo.position.y);
 			font3.draw(batch, "" + mo.velocity, camera.position.x + 190, mo.position.y);
 		}
+		
+		scoreFont.draw(batch, "" + score, camera.position.x - (scoreFont.getBounds("" + score).width / 2), camera.position.y + 300);
 		batch.end();
 
 		
@@ -566,9 +569,9 @@ public class GameScreen implements Screen {
 	}
 	
 	
-	public void addCart(Deque<MovingObstacle> collection, String layer, int maxCarts, int maxSpacing, int maxSpeed, float offset) {
+	public void addCart(Deque<MovingObstacle> collection, String layer, float offset, String cartLayer, float velocityY) {
 		float x = backgroundL4Left.getWidth() - 64;
-		Vector2 velocity = new Vector2(getRandomValue(5, maxSpeed), backgroundL3Velocity.y);
+		Vector2 velocity = new Vector2(0, velocityY);
 		Texture image = new Texture(Gdx.files.internal("background/" + layer + "/carts/cart2.png"));
 		Texture rail = new Texture(Gdx.files.internal("background/" + layer + "/rails/rail2.png"));
 		
@@ -579,7 +582,7 @@ public class GameScreen implements Screen {
 		}
 		
 		addMovingObstacle(collection, new Cart(0, 0, image, rail, backgroundL4Left.getWidth() - leftWall.getWidth(), 
-				  camera.viewportWidth - backgroundL4Right.getWidth() + rightWall.getWidth(), velocity, maxCarts, maxSpacing), x, offset, false);
+				  camera.viewportWidth - backgroundL4Right.getWidth() + rightWall.getWidth(), velocity, cartLayer), x, offset, false);
 	}
 	
 	public void addMovingObstacle(Deque<MovingObstacle> collection, MovingObstacle obstacle, float x, float offset, boolean spawnOnTop) {
@@ -618,10 +621,13 @@ public class GameScreen implements Screen {
 			if (magnetoHitBox.overlaps(o.hitBox)) {
 				System.out.println("HitCheck " + o.position.x + " " + o.position.y);
 				
-				if (score > highScore) {
-					highScore = score;
+				if (score > prefs.getInteger("highScore")) {
+//					highScore = score;
+					prefs.putInteger("highScore", score);
+					prefs.flush();
+					newHighScore = true;
 				}
-				score = 0;
+//				score = 0;
 				
 //				game.setScreen(game.gameOverScreen);
 				gameState = GameState.GameOver;
@@ -660,12 +666,22 @@ public class GameScreen implements Screen {
 	public void drawGameOverScreen() {
 //		stage.getViewport().update((int) camera.viewportWidth, (int) camera.viewportHeight);
 		
-		
 		stage.draw();
+		stage.getBatch().begin();
+		
+		if (newHighScore) {
+			stage.getBatch().draw(new Texture(Gdx.files.internal("newHighScore.png")), gameOverBestScore.getX() + gameOverBestScore.getWidth() - 40, gameOverBestScore.getY() - 20);
+		}
+
+		endScoreFont.draw(stage.getBatch(), "" + score, gameOverScore.getX() + gameOverScore.getWidth() + 10, gameOverScore.getY() + endScoreFont.getXHeight() + 2);
+		endScoreFont.draw(stage.getBatch(), "" + prefs.getInteger("highScore"), gameOverBestScore.getX() + gameOverBestScore.getWidth() + 10, gameOverBestScore.getY() + endScoreFont.getXHeight() + 2);
+		stage.getBatch().end();
 
 		if (playAgain.isPressed()) {
 			gameState = GameState.Running;
 			dispose();
+			score = 0;
+			newHighScore = false;
 			show();
 //			game.setScreen(game.gameScreen);  // toto asi neni dobry napad
 		}
@@ -677,12 +693,12 @@ public class GameScreen implements Screen {
 		backgroundL2Velocity.set(0, (float) (speed * 0.5));
 		backgroundL3Velocity.set(0, (float) (speed * 0.166));
 		
-//		for (MovingObstacle cart : cartsL2) {
-//			cart.velocity.y = backgroundL2Velocity.y;  
-//		}
-//		for (MovingObstacle cart : cartsL3) {
-//			cart.velocity.y = backgroundL3Velocity.y;  
-//		}
+		for (MovingObstacle cart : cartsL2) {
+			cart.velocity.y = backgroundL2Velocity.y;  
+		}
+		for (MovingObstacle cart : cartsL3) {
+			cart.velocity.y = backgroundL3Velocity.y;  
+		}
 	}
 	
     
