@@ -11,7 +11,6 @@ public class MovingObstacle extends Obstacle {
 	Vector2 velocity;
 	private float velocityX;
 	
-	
 	public MovingObstacle(Texture image, float leftBorder, float rightBorder, Vector2 velocity) {
 		super(image);
 		this.leftBorder = leftBorder;

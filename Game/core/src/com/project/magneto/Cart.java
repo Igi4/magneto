@@ -2,6 +2,7 @@ package com.project.magneto;
 
 import java.util.HashMap;
 import java.util.Random;
+
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Vector2;
 
@@ -10,29 +11,26 @@ public class Cart extends MovingObstacle{
 	Texture rail;
 	int count;
 	int spacing;
+	private static Random random = new Random();
 	
-	
-	static HashMap<String, Integer> cartsL2Map = new HashMap<String, Integer>();
-	static HashMap<String, Integer> cartsL3Map = new HashMap<String, Integer>();
 	static HashMap<String, HashMap<String, Integer>> map = new HashMap<String, HashMap<String,Integer>>();
 
 	static {
-		cartsL2Map.put("MaxCarts", 5);
-		cartsL2Map.put("MaxSpacing", 30);
-		cartsL2Map.put("MaxSpeed", 20);
-
-		cartsL3Map.put("MaxCarts", 5);
-		cartsL3Map.put("MaxSpacing", 70);
-		cartsL3Map.put("MaxSpeed", 150);
+		map.put("cartsL2", new HashMap<String, Integer>());
+		map.put("cartsL3", new HashMap<String, Integer>());
 		
-		map.put("cartsL2", cartsL2Map);
-		map.put("cartsL3", cartsL3Map);
+		map.get("cartsL2").put("MaxCarts", 5);
+		map.get("cartsL2").put("MaxSpacing", 30);
+		map.get("cartsL2").put("MaxSpeed", 20);
+
+		map.get("cartsL3").put("MaxCarts", 5);
+		map.get("cartsL3").put("MaxSpacing", 70);
+		map.get("cartsL3").put("MaxSpeed", 150);
 	}
 	
 	public Cart(float x, float y, Texture cart, Texture rail,  float leftBorder, float rightBorder, Vector2 velocity, String cartLayer) {
 		super(x, y, cart, leftBorder, rightBorder, changeVelocity(velocity, cartLayer));
 		this.rail = rail;
-		
 		count = getRandomValue(1, map.get(cartLayer).get("MaxCarts"));
 		spacing = getRandomValue(10, map.get(cartLayer).get("MaxSpacing"));
 	}
@@ -42,19 +40,7 @@ public class Cart extends MovingObstacle{
 		return velocity;
 	}
 	
-//	public Cart(float x, float y, Texture cart, Texture rail,  float leftBorder, float rightBorder, Vector2 velocity, int maxCarts, int maxSpacing) {
-//		super(x, y, cart, leftBorder, rightBorder, velocity);
-//		this.rail = rail;
-//		
-//		count = getRandomValue(1, maxCarts);
-//		spacing = getRandomValue(10, maxSpacing);
-//	}
-	
-	
-	public static int getRandomValue(int min, int max) {
-		Random rand = new Random();
-		return rand.nextInt((max - min) + 1) + min;
+	private static int getRandomValue(int min, int max) {
+		return random.nextInt((max - min) + 1) + min;
 	}
-	
-	
 }
