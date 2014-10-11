@@ -18,10 +18,12 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Button;
 import com.badlogic.gdx.scenes.scene2d.ui.Button.ButtonStyle;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.StretchViewport;
@@ -132,6 +134,20 @@ public class GameScreen implements Screen {
 		playAgainStyle.down = playAgainDown;
 		
 		playAgain = new Button(playAgainStyle);
+		
+		playAgain.addListener(new ClickListener() {             
+		    @Override
+		    public void clicked(InputEvent event, float x, float y) {
+		    	if (gameState == GameState.GameOver) {
+					gameState = GameState.Running;
+					dispose();
+					score = 0;
+					newHighScore = false;
+					show();
+		    	}
+		    };
+		});
+		
 		gameOverBackground = new Image(new Texture(Gdx.files.internal("gameOver/table.png")));
 		gameOverScore = new Image(new Texture(Gdx.files.internal("gameOver/score.png")));
 		gameOverBestScore = new Image(new Texture(Gdx.files.internal("gameOver/best.png")));
@@ -265,7 +281,7 @@ public class GameScreen implements Screen {
 		
 		camera.position.y = magnetoPosition.y + 200;
 		
-		backgroundManager.update(camera, deltaTime, magnetoVelocity.scl(0, 1));
+		backgroundManager.update(camera, deltaTime, magnetoVelocity.cpy().scl(0, 1));
 		
 		jumpRect.set(rotationOffset, 0, rotationLength, camera.viewportHeight);
 		
@@ -356,7 +372,7 @@ public class GameScreen implements Screen {
 			font3.draw(batch, "" + mo.velocity, camera.position.x + 190, mo.position.y);
 		}
 		
-		scoreFont.draw(batch, "" + score, camera.position.x - (scoreFont.getBounds("" + score).width / 2), camera.position.y + 300);
+		if (gameState != GameState.GameOver) scoreFont.draw(batch, "" + score, camera.position.x - (scoreFont.getBounds("" + score).width / 2), camera.position.y + 300);
 		batch.end();
 
 		if (gameState == GameState.GameOver) {
@@ -491,14 +507,6 @@ public class GameScreen implements Screen {
 		endScoreFont.draw(stage.getBatch(), "" + score, gameOverScore.getX() + gameOverScore.getWidth() + 10, gameOverScore.getY() + endScoreFont.getXHeight() + 2);
 		endScoreFont.draw(stage.getBatch(), "" + prefs.getInteger("highScore"), gameOverBestScore.getX() + gameOverBestScore.getWidth() + 10, gameOverBestScore.getY() + endScoreFont.getXHeight() + 2);
 		stage.getBatch().end();
-
-		if (playAgain.isPressed()) {
-			gameState = GameState.Running;
-			dispose();
-			score = 0;
-			newHighScore = false;
-			show();
-		}
 	}
     
 	public void setSpeed(Integer speed) {

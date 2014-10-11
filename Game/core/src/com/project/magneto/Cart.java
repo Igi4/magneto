@@ -40,6 +40,17 @@ public class Cart extends MovingObstacle{
 		return velocity;
 	}
 	
+	public void move(float deltaTime) {
+		if (position.x + (count * spacing) + (count * image.getWidth()) <= leftBorder) {
+			velocity.set(velocityX, velocity.y);
+		}
+		else if (position.x + image.getWidth() - (count * spacing) - (count * image.getWidth())>= rightBorder) {
+			velocity.set((velocityX) * -1, velocity.y);
+		} 
+		
+		position.mulAdd(velocity, deltaTime);
+	}
+	
 	private static int getRandomValue(int min, int max) {
 		return random.nextInt((max - min) + 1) + min;
 	}

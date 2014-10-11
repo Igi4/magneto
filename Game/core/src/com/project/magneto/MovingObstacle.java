@@ -9,7 +9,7 @@ public class MovingObstacle extends Obstacle {
 	float leftBorder;
 	float rightBorder;
 	Vector2 velocity;
-	private float velocityX;
+	protected float velocityX;
 	
 	public MovingObstacle(Texture image, float leftBorder, float rightBorder, Vector2 velocity) {
 		super(image);
@@ -23,8 +23,6 @@ public class MovingObstacle extends Obstacle {
 		this(image, leftBorder, rightBorder, velocity);
 		this.setPosition(x, y);
 	}
-
-	
 
 	public void move(float deltaTime) {
 		if (position.x <= leftBorder) {
