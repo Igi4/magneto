@@ -1,7 +1,9 @@
 package com.project.magneto;
 
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 
 import com.badlogic.gdx.Gdx;
@@ -10,10 +12,10 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.graphics.g2d.Animation.PlayMode;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.g2d.Animation.PlayMode;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Rectangle;
@@ -73,6 +75,8 @@ public class GameScreen implements Screen {
 	Deque<MovingObstacle> obstacles = new LinkedList<MovingObstacle>();
 	Deque<MovingObstacle> cartsL2 = new LinkedList<MovingObstacle>();
 	Deque<MovingObstacle> cartsL3 = new LinkedList<MovingObstacle>();
+	
+	List<PowerUp> powerups = new ArrayList<PowerUp>();
 	
 	static enum Orientation { Left, Right }
 	
@@ -210,6 +214,9 @@ public class GameScreen implements Screen {
 		
 		gravity.set(GRAVITY, 0);
 		obstacles.clear();
+		powerups.clear();
+		
+		powerups.add(new SlowField(magnetoHitBox, (LinkedList<MovingObstacle>) obstacles, 50f));
 	
 		for (int i = 1; i <= 5; i++) {
 			addObstacle();
@@ -378,12 +385,20 @@ public class GameScreen implements Screen {
 		if (gameState == GameState.GameOver) {
 			drawGameOverScreen();
 		} 
+		else {
+			for (PowerUp p : powerups) {
+				if (p.isActive()) {
+					p.render(Gdx.graphics.getDeltaTime());
+				}
+			}			
+		}
 		
 		 shapeRenderer.begin(ShapeType.Line);
 		 shapeRenderer.setColor(0, 1, 0, 1);
 		 shapeRenderer.rect(jumpRect.x, jumpRect.y + 1, jumpRect.width, jumpRect.height - 1);
 		 shapeRenderer.setColor(1, 0, 0, 1);
 		 shapeRenderer.rect(magnetoHitBox.x, magnetoHitBox.y, magnetoHitBox.width, magnetoHitBox.height);
+		 
 		 for (Obstacle o : obstacles) {
 			 shapeRenderer.setColor(0, 1, 1, 1);
 			 shapeRenderer.rect(o.hitBox.x, o.hitBox.y, o.hitBox.width, o.hitBox.height);
@@ -466,17 +481,17 @@ public class GameScreen implements Screen {
 			if (magnetoHitBox.overlaps(o.hitBox)) {
 				System.out.println("HitCheck " + o.position.x + " " + o.position.y);
 				
-				if (score > prefs.getInteger("highScore")) {
-					prefs.putInteger("highScore", score);
-					prefs.flush();
-					newHighScore = true;
-				}
-				
-				gameState = GameState.GameOver;
-				obstacles.clear();
-				setSpeed(100);
-				
-				return true;
+//				if (score > prefs.getInteger("highScore")) {
+//					prefs.putInteger("highScore", score);
+//					prefs.flush();
+//					newHighScore = true;
+//				}
+//				
+//				gameState = GameState.GameOver;
+//				obstacles.clear();
+//				setSpeed(100);
+//				
+//				return true;
 			}
 			
 		}
